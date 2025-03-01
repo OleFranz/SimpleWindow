@@ -91,10 +91,9 @@ def Initialize(Name="", Size=(None, None), Position=(None, None), TitleBarColor=
         True if the window was successfully initialized, False otherwise.
     """
     try:
-        HWND = win32gui.FindWindow(None, Name)
-        if HWND != 0:
+        if Name in WINDOWS:
             if NoWarnings != True:
-                print(RED + f"The window '{Name}' already exists, not creating a new window. ({Name}: {HWND})" + NORMAL)
+                print(RED + f"The window '{Name}' already exists, not creating a new window." + NORMAL)
             return False
 
         WINDOWS[Name] = {"Size": Size,
@@ -108,6 +107,7 @@ def Initialize(Name="", Size=(None, None), Position=(None, None), TitleBarColor=
                         "Icon": Icon,
                         "NoWarnings": NoWarnings,
                         "Open": False,
+                        "HWND": None,
                         "Window": None}
 
         return True
@@ -165,7 +165,7 @@ def CreateWindow(Name=""):
 
         glfw.set_window_pos(Window, Position[0], Position[1])
 
-        HWND = win32gui.FindWindow(None, Name)
+        HWND = glfw.get_win32_window(Window)
         windll.dwmapi.DwmSetWindowAttribute(HWND, 35, byref(c_int((TitleBarColor[0] << 16) | (TitleBarColor[1] << 8) | TitleBarColor[2])), sizeof(c_int))
         Icon = Icon.replace("\\", "/")
         if os.path.exists(Icon) and Icon.endswith(".ico"):
@@ -174,6 +174,7 @@ def CreateWindow(Name=""):
             win32gui.SendMessage(HWND, win32con.WM_SETICON, win32con.ICON_BIG, IconHandle)
 
         WINDOWS[Name]["Open"] = True
+        WINDOWS[Name]["HWND"] = HWND
         WINDOWS[Name]["Window"] = Window
 
         if Foreground:
@@ -264,7 +265,7 @@ def GetSize(Name=""):
     """
     try:
         if WINDOWS[Name]["Open"]:
-            HWND = win32gui.FindWindow(None, Name)
+            HWND = WINDOWS[Name]["HWND"]
             if HWND == None:
                 Close(Name=Name)
                 return WINDOWS[Name]["Size"]
@@ -332,7 +333,7 @@ def GetPosition(Name=""):
     """
     try:
         if WINDOWS[Name]["Open"]:
-            HWND = win32gui.FindWindow(None, Name)
+            HWND = WINDOWS[Name]["HWND"]
             if HWND == None:
                 Close(Name=Name)
                 return WINDOWS[Name]["Position"]
@@ -369,7 +370,7 @@ def SetTitleBarColor(Name="", Color=(0, 0, 0)):
                     print(RED + "TitleBarColor must be a tuple of (int, int, int)." + NORMAL)
                 return
             WINDOWS[Name]["TitleBarColor"] = Color
-            HWND = win32gui.FindWindow(None, Name)
+            HWND = WINDOWS[Name]["HWND"]
             windll.dwmapi.DwmSetWindowAttribute(HWND, 35, byref(c_int((max(0, min(255, round(Color[0]))) << 16) | (max(0, min(255, round(Color[1]))) << 8) | max(0, min(255, round(Color[2]))))), sizeof(c_int))
     except:
         ShowError("SimpleWindow - Error in function SetTitleBarColor.", str(traceback.format_exc()))
@@ -509,7 +510,7 @@ def SetForeground(Name="", State=True):
     try:
         if WINDOWS[Name]["Open"] == True:
             WINDOWS[Name]["Foreground"] = State == True
-            HWND = win32gui.FindWindow(None, Name)
+            HWND = WINDOWS[Name]["HWND"]
             if State == True:
                 win32gui.SetWindowPos(HWND, win32con.HWND_TOPMOST if WINDOWS[Name]["TopMost"] == True else win32con.HWND_TOP, GetSize(Name=Name)[0], GetSize(Name=Name)[1], 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
             elif State == False:
@@ -535,7 +536,7 @@ def GetForeground(Name=""):
     """
     try:
         if WINDOWS[Name]["Open"] == True:
-            HWND = win32gui.FindWindow(None, Name)
+            HWND = WINDOWS[Name]["HWND"]
             return HWND == win32gui.GetForegroundWindow()
         return False
     except:
@@ -562,7 +563,7 @@ def SetMinimized(Name="", State=False):
     try:
         if WINDOWS[Name]["Open"]:
             WINDOWS[Name]["Minimized"] = State == True
-            HWND = win32gui.FindWindow(None, Name)
+            HWND = WINDOWS[Name]["HWND"]
             win32gui.ShowWindow(HWND, win32con.SW_MINIMIZE if State else win32con.SW_RESTORE)
     except:
         ShowError("SimpleWindow - Error in function SetMinimized.", str(traceback.format_exc()))
@@ -585,7 +586,7 @@ def GetMinimized(Name=""):
     """
     try:
         if WINDOWS[Name]["Open"]:
-            HWND = win32gui.FindWindow(None, Name)
+            HWND = WINDOWS[Name]["HWND"]
             return int(win32gui.IsIconic(HWND)) == 1
     except:
         ShowError("SimpleWindow - Error in function GetMinimized.", str(traceback.format_exc()))
@@ -668,7 +669,7 @@ def SetIcon(Name="", Icon=""):
                     print(RED + "Icon must be a .ico file." + NORMAL)
                 return
             WINDOWS[Name]["Icon"] = Icon
-            HWND = win32gui.FindWindow(None, Name)
+            HWND = WINDOWS[Name]["HWND"]
             Icon = Icon.replace("\\", "/")
             IconHandle = win32gui.LoadImage(None, Icon, win32con.IMAGE_ICON, 0, 0, win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE)
             win32gui.SendMessage(HWND, win32con.WM_SETICON, win32con.ICON_SMALL, IconHandle)
@@ -762,7 +763,7 @@ def GetHandle(Name=""):
         The window's handle.
     """
     try:
-        return win32gui.FindWindow(None, Name)
+        return WINDOWS[Name]["HWND"]
     except:
         ShowError("SimpleWindow - Error in function GetHandle.", str(traceback.format_exc()))
         return 0
@@ -799,7 +800,7 @@ def Show(Name="", Frame=None):
                 return
 
         if Frame is not None:
-            HWND = win32gui.FindWindow(None, Name)
+            HWND = WINDOWS[Name]["HWND"]
             if HWND == 0 or HWND == None:
                 return
             if int(win32gui.IsIconic(HWND)) == 1:
