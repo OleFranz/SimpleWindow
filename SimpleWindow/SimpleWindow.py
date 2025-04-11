@@ -154,6 +154,8 @@ def CreateWindow(Name=""):
         WINDOWS[Name]["Size"] = Size
         WINDOWS[Name]["Position"] = Position
 
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Python.Pip.Modules.SimpleWindow.PyPI.GitHub.OleFranz")
+
         Window = glfw.create_window(Size[0], Size[1], Name, None, None)
         glfw.make_context_current(Window)
 
@@ -169,6 +171,7 @@ def CreateWindow(Name=""):
         windll.dwmapi.DwmSetWindowAttribute(HWND, 35, byref(c_int((TitleBarColor[0] << 16) | (TitleBarColor[1] << 8) | TitleBarColor[2])), sizeof(c_int))
         Icon = Icon.replace("\\", "/")
         if os.path.exists(Icon) and Icon.endswith(".ico"):
+            ctypes.windll.Shell32.SetCurrentProcessExplicitAppUserModelID(Name)
             IconHandle = win32gui.LoadImage(None, Icon, win32con.IMAGE_ICON, 0, 0, win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE)
             win32gui.SendMessage(HWND, win32con.WM_SETICON, win32con.ICON_SMALL, IconHandle)
             win32gui.SendMessage(HWND, win32con.WM_SETICON, win32con.ICON_BIG, IconHandle)

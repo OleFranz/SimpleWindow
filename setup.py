@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="SimpleWindow",
-    version="0.20",
+    version="0.21",
     description="A package to easily create windows in Python using GLFW, OpenCV-Python, NumPy, pywin32 and ctypes.",
     long_description=open("README.md").read(),
     author="OleFranz",
