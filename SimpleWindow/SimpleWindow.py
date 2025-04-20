@@ -1,5 +1,6 @@
 from ctypes import Structure, c_int32, c_int16, c_int, windll, sizeof, byref
 import win32gui, win32con
+import OpenGL.GL as gl
 import traceback
 import ctypes
 import numpy
@@ -158,6 +159,8 @@ def CreateWindow(Name=""):
 
         Window = glfw.create_window(Size[0], Size[1], Name, None, None)
         glfw.make_context_current(Window)
+
+        glfw.set_window_size_limits(Window, 10, 10, glfw.DONT_CARE, glfw.DONT_CARE)
 
         if Resizable == False:
             glfw.set_window_attrib(Window, glfw.RESIZABLE, glfw.FALSE)
@@ -791,39 +794,66 @@ def Show(Name="", Frame=None):
     try:
         if WINDOWS[Name]["Open"] == False:
             CreateWindow(Name=Name)
+            WINDOWS[Name]["TextureID"] = gl.glGenTextures(1)
+            gl.glBindTexture(gl.GL_TEXTURE_2D, WINDOWS[Name]["TextureID"])
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
+
         elif WINDOWS[Name]["Open"] == None and WINDOWS[Name]["Undestroyable"] == False:
             return
-        if glfw.window_should_close(WINDOWS[Name]["Window"]):
+
+        Window = WINDOWS[Name]["Window"]
+        if glfw.window_should_close(Window):
             if WINDOWS[Name]["Open"] == True:
                 Close(Name=Name)
             if WINDOWS[Name]["Undestroyable"] == True:
-                Initialize(Name=Name, Size=WINDOWS[Name]["Size"], Position=WINDOWS[Name]["Position"], TitleBarColor=WINDOWS[Name]["TitleBarColor"], Resizable=WINDOWS[Name]["Resizable"], TopMost=WINDOWS[Name]["TopMost"], Undestroyable=WINDOWS[Name]["Undestroyable"], Icon=WINDOWS[Name]["Icon"])
+                Initialize(Name=Name, Size=WINDOWS[Name]["Size"], Position=WINDOWS[Name]["Position"], 
+                         TitleBarColor=WINDOWS[Name]["TitleBarColor"], Resizable=WINDOWS[Name]["Resizable"], 
+                         TopMost=WINDOWS[Name]["TopMost"], Undestroyable=WINDOWS[Name]["Undestroyable"], 
+                         Icon=WINDOWS[Name]["Icon"])
             else:
                 WINDOWS[Name]["Open"] = None
                 return
 
         if Frame is not None:
-            HWND = WINDOWS[Name]["HWND"]
-            if HWND == 0 or HWND == None:
-                return
-            if int(win32gui.IsIconic(HWND)) == 1:
-                glfw.poll_events()
-                return
+            glfw.make_context_current(Window)
 
-            RECT = win32gui.GetClientRect(HWND)
-            TopLeft = win32gui.ClientToScreen(HWND, (RECT[0], RECT[1]))
-            BottomRight = win32gui.ClientToScreen(HWND, (RECT[2], RECT[3]))
-            SIZE = BottomRight[0] - TopLeft[0], BottomRight[1] - TopLeft[1]
+            Width, Height = glfw.get_framebuffer_size(Window)
+            gl.glViewport(0, 0, Width, Height)
 
-            HDC = win32gui.GetDC(HWND)
+            gl.glClearColor(0.0, 0.0, 0.0, 1.0)
+            gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
-            Frame = numpy.flip(Frame, axis=0)
-            Frame = cv2.resize(Frame, GetSize(Name=Name))
-            Frame = numpy.ascontiguousarray(Frame)
+            RGBFrame = cv2.cvtColor(Frame, cv2.COLOR_BGR2RGB)
+            ResizedFrame = cv2.resize(RGBFrame, (Width, Height))
+            FrameData = numpy.ascontiguousarray(ResizedFrame, dtype=numpy.uint8)
 
-            windll.gdi32.StretchDIBits(HDC, 0, 0, SIZE[0], SIZE[1], 0, 0, SIZE[0], SIZE[1], ctypes.c_void_p(Frame.ctypes.data), ctypes.byref(BITMAPINFO(Frame.shape[1], Frame.shape[0])), win32con.DIB_RGB_COLORS, win32con.SRCCOPY)
+            gl.glBindTexture(gl.GL_TEXTURE_2D, WINDOWS[Name]["TextureID"])
+            gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
+            gl.glTexImage2D(
+                gl.GL_TEXTURE_2D, 
+                0,
+                gl.GL_RGB,
+                Width,
+                Height,
+                0,
+                gl.GL_RGB,
+                gl.GL_UNSIGNED_BYTE,
+                FrameData.tobytes()
+            )
 
-            win32gui.ReleaseDC(HWND, HDC)
+            gl.glEnable(gl.GL_TEXTURE_2D)
+            gl.glBegin(gl.GL_QUADS)
+            gl.glTexCoord2f(0.0, 1.0); gl.glVertex2f(-1.0, -1.0)
+            gl.glTexCoord2f(1.0, 1.0); gl.glVertex2f( 1.0, -1.0)
+            gl.glTexCoord2f(1.0, 0.0); gl.glVertex2f( 1.0,  1.0)
+            gl.glTexCoord2f(0.0, 0.0); gl.glVertex2f(-1.0,  1.0)
+            gl.glEnd()
+            gl.glDisable(gl.GL_TEXTURE_2D)
+
+            glfw.swap_buffers(Window)
 
         glfw.poll_events()
     except:

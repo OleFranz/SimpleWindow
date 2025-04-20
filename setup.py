@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name="SimpleWindow",
-    version="0.21",
-    description="A package to easily create windows in Python using GLFW, OpenCV-Python, NumPy, pywin32 and ctypes.",
+    version="0.22",
+    description="A package to easily create and manage windows in Python",
     long_description=open("README.md").read(),
     author="OleFranz",
     license="GPL-3.0",
@@ -11,8 +11,9 @@ setup(
     python_requires=">=3.9",
     install_requires=[
         "glfw",
-        "opencv-python",
         "numpy",
+        "opencv-python",
+        'PyOpenGL',
         "pywin32",
     ],
 )
