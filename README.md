@@ -14,30 +14,28 @@ pip install SimpleWindow
 import SimpleWindow
 import numpy as np
 
-# Initialize the window, the window wont be shown until Show() is called
-SimpleWindow.Initialize(Name="Example Window",
-                        Size=(1280, 720),
-                        Position=(100, 100), 
-                        TitleBarColor=(0, 0, 0),
-                        Resizable=True,
-                        TopMost=False,
-                        Foreground=True,
-                        Minimized=False,
-                        Undestroyable=False,
-                        Icon="",
-                        NoWarnings=False)
+# initialize the window, the window wont be shown until show() is called
+window = SimpleWindow.Window(name="Example Window",
+                             size=(1280, 720),
+                             position=(100, 100),
+                             title_bar_color=(0, 0, 0),
+                             border_color=(None, None, None), # None so we don't overwrite the windows default color
+                             resizable=True,
+                             topmost=False,
+                             foreground=True,
+                             minimized=False,
+                             undestroyable=False,
+                             icon="",
+                             no_warnings=False)
 
-# Create an image
-Image = np.zeros((720, 1280, 3), dtype=np.uint8)
+# create an image
+image = np.zeros((720, 1280, 3), dtype=np.uint8)
 
 while True:
-    # The window will be shown now since its the first call of Show() since the Initialize() call
-    SimpleWindow.Show(Name="Example Window", Frame=Image)
+    # the window will be shown now since its the first call of show()
+    window.show(frame=image)
 
-    # Get the window open state
-    WindowIsOpen = SimpleWindow.GetOpen(Name="Example Window")
-
-    # If the value is False then the window was destroyed by the code, if the value is None then the window got destroyed by the user
-    if WindowIsOpen == False or WindowIsOpen == None:
+    # check if the window is open
+    if window.get_open() == False:
         break
 ```
