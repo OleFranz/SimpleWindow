@@ -1,4 +1,4 @@
-from ctypes import Structure, c_int32, c_int16, c_int, windll, sizeof, byref
+from ctypes import c_int, windll, sizeof, byref
 import win32gui, win32con
 import OpenGL.GL as gl
 import ctypes
@@ -135,6 +135,18 @@ class Window:
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
 
+        gl.glTexImage2D(
+            gl.GL_TEXTURE_2D,
+            0,
+            gl.GL_RGB8,
+            self._size[0],
+            self._size[1],
+            0,
+            gl.GL_BGR,
+            gl.GL_UNSIGNED_BYTE,
+            None
+        )
+
 
     # MARK: close()
     def close(self):
@@ -151,6 +163,41 @@ class Window:
         if self._open:
             glfw.destroy_window(self._window)
             self._open = False
+
+
+    # MARK: set_name()
+    def set_name(self, name: str):
+        """
+        Set the name of the window
+
+        Parameters
+        ----------
+        name : str
+            The name of the window
+
+        Returns
+        -------
+        None
+        """
+        glfw.set_window_title(self._window, name)
+        self._name = name
+
+
+    # MARK: get_name()
+    def get_name(self):
+        """
+        Get the name of the window
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        str
+            The name of the window
+        """
+        return self._name
 
 
     # MARK: set_size()
@@ -660,27 +707,39 @@ class Window:
         glfw.make_context_current(self._window)
 
         width, height = glfw.get_framebuffer_size(self._window)
-        gl.glViewport(0, 0, width, height)
+        if (width != gl.glGetTexLevelParameteriv(gl.GL_TEXTURE_2D, 0, gl.GL_TEXTURE_WIDTH) or
+            height != gl.glGetTexLevelParameteriv(gl.GL_TEXTURE_2D, 0, gl.GL_TEXTURE_HEIGHT)):
+            gl.glTexImage2D(
+                gl.GL_TEXTURE_2D,
+                0,
+                gl.GL_RGB8,
+                width,
+                height,
+                0,
+                gl.GL_BGR,
+                gl.GL_UNSIGNED_BYTE,
+                None
+            )
 
+        gl.glViewport(0, 0, width, height)
         gl.glClearColor(0.0, 0.0, 0.0, 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
-        RGBFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        ResizedFrame = cv2.resize(RGBFrame, (width, height))
-        FrameData = numpy.ascontiguousarray(ResizedFrame, dtype=numpy.uint8)
+        if len(frame.shape) == 2 or frame.shape[2] == 1:
+            frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+        if frame.shape[0] != height or frame.shape[1] != width:
+            frame = cv2.resize(frame, (width, height))
 
+        frame = numpy.ascontiguousarray(frame, dtype=numpy.uint8)
         gl.glBindTexture(gl.GL_TEXTURE_2D, self._texture_id)
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
-        gl.glTexImage2D(
-            gl.GL_TEXTURE_2D, 
-            0,
-            gl.GL_RGB,
-            width,
-            height,
-            0,
-            gl.GL_RGB,
+        gl.glTexSubImage2D(
+            gl.GL_TEXTURE_2D,
+            0, 0, 0,
+            width, height,
+            gl.GL_BGR,
             gl.GL_UNSIGNED_BYTE,
-            FrameData.tobytes()
+            frame.tobytes()
         )
 
         gl.glEnable(gl.GL_TEXTURE_2D)

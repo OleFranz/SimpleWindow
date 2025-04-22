@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="SimpleWindow",
-    version="1.0",
+    version="1.1",
     description="A package to easily create and manage windows in Python",
     long_description=open("README.md").read(),
     author="OleFranz",
